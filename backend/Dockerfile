@@ -28,5 +28,5 @@ COPY pyproject.toml uv.lock /app/
 # 复制代码
 COPY . /app
 
-CMD ["uv", "run", "main.py"]
-# CMD ["sh", "-c", "uv sync --no-dev && uv run main.py"]
+# CMD ["uv", "run", "main.py"]
+CMD ["sh", "-c", "uv sync --no-dev && uv run main.py"]
