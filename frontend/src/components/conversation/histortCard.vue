@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from "vue"
-import { HistoryListType } from "../../type"
+// import { HistoryListType } from "../../type"
 
 const emits = defineEmits<{
     (event:'delete'):void

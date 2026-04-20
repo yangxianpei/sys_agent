@@ -312,7 +312,7 @@ watch(
                 title="GitHub 仓库"
               >
                 <img
-                  src="../assets/github.png"
+                  src="../../assets/github.png"
                   alt="GitHub"
                   class="help-icon"
                 />
@@ -324,7 +324,7 @@ watch(
                 title="帮助文档"
               >
                 <img
-                  src="../assets/help.png"
+                  src="../../assets/help.png"
                   alt="帮助文档"
                   class="help-icon"
                 />
