@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, provide } from 'vue'
+import { ref, onMounted, computed, provide,inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, SwitchButton, Setting } from '@element-plus/icons-vue'
@@ -26,7 +26,7 @@ const userStore = useUserStore()
 const selectedSession = ref('')
 const sessions = ref<any[]>([])
 const loading = ref(false)
-
+const clearMessage = inject<() => any>('clearMessage')
 // 格式化时间
 const formatTime = (timeStr: string) => {
   try {
@@ -55,7 +55,8 @@ const fetchSessions = async (refresh='') => {
     loading.value = true
     const response = await session_list()
     if (response.code == 200) {
-      sessions.value = response.data?.map((session: any) => {
+      sessions.value = response.data?.map((session: any,idx) => {
+
         return {
         sessionId: session.session_id || session.id,
         title: session.title || '未命名会话',
@@ -76,9 +77,15 @@ const fetchSessions = async (refresh='') => {
 }
 
 provide('refreshWorkspaceSessions', async ()=>{
-  if(!selectedSession.value){
-    fetchSessions('refresh')
-  }
+    await fetchSessions()
+    // const response = await session_list()
+    // if (response.code==200){
+    //     if(response.data.length){
+    //         selectedSession.value=response.data[response.data.length-1].session_id
+    //     }
+   let id =sessions.value[0].session_id || sessions.value[0].sessionId 
+    selectedSession.value=id
+   return id
 
 })
 
@@ -91,7 +98,7 @@ const deleteSession = async (sessionId: string, event: Event) => {
     if (response.code === 200) {
       ElMessage.success('会话删除成功')
       await fetchSessions()
-      
+      clearMessage?.()
       if (selectedSession.value === sessionId) {
         selectedSession.value = ''
         router.push('/workspace')

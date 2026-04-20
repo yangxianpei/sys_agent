@@ -690,7 +690,6 @@ const startTask = async () => {
       },
       (error) => {
         console.error('❌ 任务执行出错:', error)
-        ElMessage.error('任务执行失败')
         isStreaming.value = false
       },
       () => {

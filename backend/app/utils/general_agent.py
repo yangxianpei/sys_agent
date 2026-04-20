@@ -7,10 +7,12 @@ from langchain_openai import ChatOpenAI
 from app.models.agent import Agent
 from app.models.tool import Tool
 from app.models.mcp import Mcp
+from app.models.agent_skill import AgentSkill
 from app.models.knowledge import Knowledge, Knowledge_Doc
 from app.utils.helper import build_tools_from_openapi
 from app.utils.mcp import list_tools_for_service
 import asyncio
+import threading
 import time
 from langchain_core.messages import (
     BaseMessage,
@@ -25,8 +27,13 @@ from langchain_core.tools import tool
 from app.service.vectordb.milvus import milvus
 from langchain.agents.middleware import wrap_tool_call
 from langgraph.config import get_stream_writer
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
+from langchain_core.messages.ai import UsageMetadata
+from app.utils.llm import ToolTraceHandler
 
 logger = get_logger(__name__)
+from app.utils.skill_agent import SkillAgent
+from app.utils.openai_tool_name import sanitize_openai_tool_name
 
 
 @tool
@@ -36,14 +43,22 @@ def get_current_date() -> str:
 
 
 class GeneralAgent:
-    def __init__(self, agent_config: AgentSchema):
+    def __init__(self, agent_config: AgentSchema, user_id):
         self.tool_ids = []
         self.mcp_ids = []
         self.knowledge_ids = []
         self.agent_config = agent_config
         self.agent = None
-        # init_knowledge 会为每个知识库注册唯一 tool name -> 展示名
+        # init_knowledge / init_skill 会为每个工具注册 OpenAI 合法 name -> 展示名
         self.tool_name_mapp: Dict[str, str] = {}
+        self._openai_tool_names_used: set[str] = set()
+        self.user_id = str(user_id) if user_id is not None else None
+        # 与 app.utils.llm.LLM_instance 对齐，供 ToolTraceHandler.on_llm_end 累加 token / 写 Usage_stats
+        self.agent_id = (
+            str(agent_config.get("id")) if agent_config.get("id") is not None else None
+        )
+        self.usage_by_model: Dict[str, UsageMetadata] = {}
+        self._usage_lock = threading.Lock()
 
     async def emit_event(self, event):
         try:
@@ -128,8 +143,8 @@ class GeneralAgent:
         else:
             key = str(knowledge_ids)
         safe = re.sub(r"[^a-zA-Z0-9_-]", "_", key).strip("_") or "kb"
-        name = f"knowledge_{safe}"
-        return name[:64]
+        name = f"knowledge_{safe}"[:64]
+        return sanitize_openai_tool_name(name, used=self._openai_tool_names_used)
 
     def init_knowledge(self, knowledge_ids, name, des):
         # 动态说明不能用运行时写入的 __doc__（@tool 在定义时就会解析文档字符串）；
@@ -159,18 +174,58 @@ class GeneralAgent:
 
         return retrival_knowledge
 
+    def init_skill(self, skill_id, llm_id):
+        with db_session() as session:
+            skills = session.query(AgentSkill).filter(AgentSkill.id.in_(skill_id)).all()
+            agent_skill_as_tools = []
+
+            def create_skill_agent_as_tool(agent_skill: AgentSkill):
+                safe_name = sanitize_openai_tool_name(
+                    agent_skill.as_tool_name, used=self._openai_tool_names_used
+                )
+                self.tool_name_mapp[safe_name] = f"技能: {agent_skill.name}"
+
+                @tool(
+                    safe_name,
+                    parse_docstring=False,
+                    description=agent_skill.description or "调用技能 Agent",
+                )
+                async def call_skill_agent(query: str) -> str:
+                    skill_agent = SkillAgent(agent_skill, llm_id, father_self=self)
+                    await skill_agent.init_skill_agent()
+                    messages = await skill_agent.ainvoke([HumanMessage(content=query)])
+                    return "\n".join([message.content for message in messages])
+
+                # 子技能 Agent 自行发流式事件，主 Agent 不再包一层 START/END（同 MCP 聚合工具）
+                call_skill_agent.metadata = {
+                    "skip_main_agent_tool_middleware": True,
+                }
+                return call_skill_agent
+
+            for agent_skill in skills:
+                agent_skill_as_tools.append(create_skill_agent_as_tool(agent_skill))
+
+        return agent_skill_as_tools
+
     async def init_config(self):
         with db_session() as session:
             try:
                 result = []
+                self.agent_name = self.agent_config.get("name", "")
                 agent_id = self.agent_config.get("id", "")
                 llm_id = self.agent_config.get("llm_id", "")
-
+                self.agent_id = agent_id
                 agent_config = session.query(Agent).filter(Agent.id == agent_id).first()
                 if agent_config:
+                    self.tool_name_mapp.clear()
+                    self._openai_tool_names_used.clear()
                     tool_ids = agent_config.tool_ids
                     mcp_ids = agent_config.mcp_ids
                     knowledge_ids = agent_config.knowledge_ids or []
+                    agent_skill_ids = agent_config.agent_skill_ids or []
+                    if len(agent_skill_ids):
+                        skills_tool = self.init_skill(agent_skill_ids, llm_id)
+                        result.extend(skills_tool)
                     kds = (
                         session.query(Knowledge)
                         .filter(Knowledge.id.in_(knowledge_ids))
@@ -188,7 +243,11 @@ class GeneralAgent:
                     if mcps:
                         mcp_tool_lists = await asyncio.gather(
                             *[
-                                list_tools_for_service(mcp.server_config, llm_id)
+                                list_tools_for_service(
+                                    mcp.server_config,
+                                    self,
+                                    llm_id,
+                                )
                                 for mcp in mcps
                             ]
                         )
@@ -212,7 +271,11 @@ class GeneralAgent:
         logger.info("开始初始化MCp 和 tools")
         tools = await self.init_config()
         middleware = self.setup_agent_middlewares()
-        self.agent = create_agent(model=llm, tools=tools, middleware=middleware)
+
+        self.agent = create_agent(
+            model=llm, tools=tools, middleware=middleware
+        ).with_config({"callbacks": [ToolTraceHandler(self)]})
+
         return self.agent
 
     def wrap_event(

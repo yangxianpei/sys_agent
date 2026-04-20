@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: helloagent-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 789456112
+      # 新增：设置容器和MySQL时区为东八区
+      TZ: Asia/Shanghai
+      MYSQL_INITDB_SKIP_TZINFO: 1
+      # 自动创建rag数据库（可选，避免手动创建）
+      MYSQL_DATABASE: helloagent
+      # 字符集配置（避免中文乱码，顺带优化）
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - yxp_agent_db_data:/var/lib/mysql 
+      # 新增：挂载宿主机时区文件，同步时间
+      - /etc/localtime:/etc/localtime:ro
+    # 新增：启动参数强制指定MySQL时区，双重保障
+    command: --default-time-zone='+8:00'
+
+  app:
+    build: .
+    container_name: helloagent
+    restart: always
+    environment:
+      - ENV=prod          # 保留原有环境变量
+      # 新增：给应用容器也同步时区（避免应用和数据库时间不一致）
+      - TZ=Asia/Shanghai
+    volumes:
+      - /home/ubuntu/sys_agent/backend:/app
+          # 新增：应用容器也挂载时区文件
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+
+volumes:
+  yxp_db_data:
+    name: yxp_agent_db_data

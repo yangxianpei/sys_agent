@@ -7,6 +7,7 @@ from starlette.responses import StreamingResponse
 import asyncio
 import json
 from app.schema.lingseek import LingSeekTask
+from typing import List
 
 api_router = APIRouter(prefix="/v1", tags=["LLM"])
 
@@ -69,10 +70,17 @@ async def simple_chat(
     query: str = Body(..., description="用户输入内容"),
     model_id: str = Body(..., description="模型ID"),
     session_id: str = Body(None, description="会话ID"),
+    mcp_servers: List[str] = Body(default=[], description="mcp_servers"),
+    tools: List[str] = Body(default=[], description="tools"),
 ):
     user = request.state.user
     return await llm_service.simple_chat(
-        query, model_id, session_id, user_id=user.get("id", "")
+        query,
+        model_id,
+        session_id,
+        mcp_servers,
+        tools,
+        user_id=user.get("id", ""),
     )
 
 
@@ -80,12 +88,15 @@ async def simple_chat(
 async def guide_prompt(
     request: Request,
     query: str = Body(..., embed=True, description="用户输入内容"),
+    web_search: bool = Body(False, description="web_search"),
+    mcp_servers: List[str] = Body(default=[], description="mcp_servers"),
+    tools: List[str] = Body(default=[], description="tools"),
 ):
     user = request.state.user
 
     async def general_generate():
         async for chunk in llm_service.lingseek_agent(
-            query, user_id=user.get("id", "")
+            query, mcp_servers, tools, user_id=user.get("id", "")
         ):
             yield f"data: {json.dumps(chunk)}\n\n"
 

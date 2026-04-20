@@ -275,9 +275,9 @@ const startGenerateGuidePrompt = async () => {
     await generateLingSeekGuidePromptAPI(
       {
         query: userQuery.value,
-        // tools: selectedTools.value,
-        // web_search: webSearchEnabled.value,
-        // mcp_servers: originalParams.value.mcp_servers
+        tools: selectedTools.value,
+        web_search: webSearchEnabled.value,
+        mcp_servers: originalParams.value.mcp_servers
       },
       (data) => {
         // 处理流式数据（纯文本），立即更新

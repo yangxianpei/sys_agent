@@ -3,6 +3,7 @@ from app.models.llm import LLM
 from langchain_core.messages import BaseMessage, ToolMessage
 from starlette.responses import StreamingResponse
 import json
+import re
 from app.service.work_session import work_session
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from app.utils.llm import llm_instance
@@ -16,7 +17,7 @@ from app.prompts.lingseek import (
 )
 from app.schema.lingseek import LingSeekTask, LingSeekTaskStep
 from app.utils.helper import get_beijing_time
-from typing import List, Union, Optional
+from typing import Any, Dict, List, Union, Optional
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -61,6 +62,20 @@ class LLMService(BaseService):
                 return llm.to_dict()
             return None
 
+    def get_llm_by_id(self, llm_id):
+        with self.transession() as session:
+            llm = session.query(LLM).filter(LLM.llm_id == llm_id).first()
+            if llm:
+                return llm.to_dict()
+            return None
+
+    def get_default_llm(self):
+        with self.transession() as session:
+            llm = session.query(LLM).first()
+            if llm:
+                return llm.to_dict()
+            return None
+
     def modify_llm(self, llm_id, model, base_url, api_key):
         with self.transession() as session:
             try:
@@ -98,7 +113,11 @@ class LLMService(BaseService):
             return "".join(parts).strip()
         return str(content).strip()
 
-    async def simple_chat(self, query, model_id, session_id, user_id):
+    async def simple_chat(
+        self, query, model_id, session_id, mcp_servers, tool_ids, user_id
+    ):
+        llm_config = self.get_llm_by_id(model_id)
+
         history = work_session.get_session(session_id)
         if history:
             history_messages = [
@@ -106,22 +125,26 @@ class LLMService(BaseService):
                 for message in history.get("contexts")
             ]
         else:
-            history_messages = "无历史对话"
+            history_messages = ["无历史对话"]
         system_prompt = f"""你是一个专业的AI助手，回答要简洁、准确、有礼貌。
         这是之前的对话历史，请参考上下文回答：
         你必须遵守规则：
         调用工具返回结果仅供内部参考，禁止原样输出JSON。
         请将结果整理为自然语言，给用户清晰回答。
-        {history_messages}
+        {"".join(history_messages)}
         """
-
-        tools = await llm_instance.init_tools(user_id)
+        all_tools = []
+        await llm_instance.init_llm(llm_config)
+        tools = await llm_instance.init_tools(user_id, tool_ids)
+        mcp_tools = await llm_instance.init_mcp(mcp_servers)
+        all_tools.extend(tools)
+        all_tools.extend(mcp_tools)
         messages = [
             SystemMessage(content=system_prompt),  # 系统角色
             HumanMessage(content=query),  # 用户问题
         ]
 
-        agent = await llm_instance.chat(tools)
+        agent = await llm_instance.chat(all_tools)
 
         def _chunk_text(msg) -> str:
             if msg is None:
@@ -246,11 +269,15 @@ class LLMService(BaseService):
             },
         )
 
-    async def lingseek_agent(self, query, user_id):
-        if not self.lingseek_llm:
-            self.lingseek_llm = llm_instance.getllm()
-        tools_schema = await llm_instance.init_tools_schema(user_id)
-        logger.info("tools_schema", tools_schema)
+    async def lingseek_agent(self, query, mcp_servers, tool_ids, user_id):
+        llm_config = self.get_default_llm()
+        all_tools = []
+        self.lingseek_llm = await llm_instance.init_llm(llm_config)
+        tools = await llm_instance.init_tools(user_id, tool_ids)
+        mcp_tools = await llm_instance.init_mcp(mcp_servers)
+        all_tools.extend(tools)
+        all_tools.extend(mcp_tools)
+        tools_schema = self._tools_to_schema(all_tools)
         tools_str = json.dumps(tools_schema, ensure_ascii=False, indent=2)
         lingseek_guide_prompt = GenerateGuidePrompt.format(
             tools_str=tools_str,
@@ -261,6 +288,55 @@ class LLMService(BaseService):
         async for chunk in self._generate_guide_prompt(lingseek_guide_prompt):
             final_response += chunk.content
             yield {"event": "task_result", "data": {"message": chunk.content}}
+
+    @staticmethod
+    def _tools_to_schema(all_tools: List[Any]) -> List[Dict[str, Any]]:
+        """
+        将 LangChain tool 列表转换为 OpenAI function calling 风格 schema。
+        """
+        tools_schema: List[Dict[str, Any]] = []
+
+        for tool in all_tools or []:
+            name = getattr(tool, "name", None)
+            if not name:
+                continue
+
+            description = getattr(tool, "description", "") or ""
+            parameters: Dict[str, Any] = {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+
+            args_schema = getattr(tool, "args_schema", None)
+            if args_schema is not None:
+                try:
+                    # pydantic v2
+                    if hasattr(args_schema, "model_json_schema"):
+                        parameters = args_schema.model_json_schema()
+                    # pydantic v1
+                    elif hasattr(args_schema, "schema"):
+                        parameters = args_schema.schema()
+                except Exception:
+                    # schema 提取失败时回退空参数定义，避免中断主流程
+                    parameters = {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    }
+
+            tools_schema.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": description,
+                        "parameters": parameters,
+                    },
+                }
+            )
+
+        return tools_schema
 
     async def _generate_guide_prompt(self, lingseek_guide_prompt):
         """
@@ -294,7 +370,8 @@ class LLMService(BaseService):
         tasks_graph = {}
         tasks_show = []
         steps = task.get("steps", [])
-        llm = llm_instance.getllm()
+        llm_config = self.get_default_llm()
+        llm = await llm_instance.init_llm(llm_config)
         for step in steps:
             task_step = LingSeekTaskStep(**step)
             tasks_graph[task_step.step_id] = task_step
@@ -314,9 +391,11 @@ class LLMService(BaseService):
                         {"start": "用户问题", "end": tasks_graph[step_id].title}
                     )
         yield {"event": "generate_tasks", "data": {"graph": tasks_show}}
-        tools = await llm_instance.init_tools(user_id)
+        tool_ids = lingseek_task.plugins or []
+        tools = await llm_instance.init_tools(user_id, tool_ids)
         tools_schema = await llm_instance.init_tools_schema(user_id)
-        tool_llm = llm_instance.getllm()
+        llm_config = self.get_default_llm()
+        tool_llm = await llm_instance.init_llm(llm_config)
         binded_tool_llm = tool_llm.bind_tools(tools_schema)
         messages: List[BaseMessage] = [
             SystemMessage(content=SystemMessagePrompt),
@@ -356,9 +435,21 @@ class LLMService(BaseService):
             }
         final_response = ""
         logger.info("生产最终答案")
+        # 最终总结阶段不再绑定 tools，避免继续产出 tool_call 导致 content 为空。
         async for chunk in llm.astream(messages):
-            final_response += chunk.content
-            yield {"event": "task_result", "data": {"message": chunk.content}}
+            chunk_content = chunk.content if isinstance(chunk.content, str) else ""
+            if chunk_content:
+                final_response += chunk_content
+                yield {"event": "task_result", "data": {"message": chunk_content}}
+
+        # 兜底：若流式阶段没有文本，退回非流式调用，保证最终答案可返回。
+        if not final_response.strip():
+            fallback = await llm.ainvoke(input=messages)
+            fallback_content = (
+                fallback.content if isinstance(fallback.content, str) else str(fallback.content)
+            )
+            if fallback_content.strip():
+                yield {"event": "task_result", "data": {"message": fallback_content}}
 
     async def _parse_function_call_response(self, message: AIMessage, tools):
         tool_messages = []
@@ -400,23 +491,73 @@ class LLMService(BaseService):
         return response_task
 
     async def _generate_tasks(self, lingseek_task_prompt):
-        conversation_json_model = llm_instance.getllm()
-
+        llm_config = self.get_default_llm()
+        conversation_json_model = await llm_instance.init_llm(llm_config)
         response = await conversation_json_model.ainvoke(input=lingseek_task_prompt)
+        raw_content = self._message_content_to_text(response.content)
 
         try:
-            content = json.loads(response.content)
+            content = self._loads_possible_json(raw_content)
             return content
         except Exception as err:
+            logger.warning("任务拆解初次 JSON 解析失败: %s", str(err))
             fix_message = FixJsonPrompt.format(
-                json_content=response.content, json_error=str(err)
+                json_content=raw_content, json_error=str(err)
             )
             fix_response = await conversation_json_model.ainvoke(input=fix_message)
+            fixed_raw_content = self._message_content_to_text(fix_response.content)
             try:
-                fix_content = json.loads(fix_response.content)
+                fix_content = self._loads_possible_json(fixed_raw_content)
                 return fix_content
             except Exception as fix_err:
-                raise ValueError(fix_err)
+                logger.exception(
+                    "任务拆解 JSON 修复仍失败, raw=%s, fixed_raw=%s",
+                    raw_content,
+                    fixed_raw_content,
+                )
+                raise ValueError(
+                    f"任务拆解 JSON 解析失败: {fix_err}. "
+                    f"原始返回: {raw_content[:300]}. "
+                    f"修复返回: {fixed_raw_content[:300]}"
+                ) from fix_err
+
+    @staticmethod
+    def _message_content_to_text(content: Any) -> str:
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, str):
+                    parts.append(block)
+                elif isinstance(block, dict):
+                    if block.get("type") == "text":
+                        parts.append(str(block.get("text", "")))
+                    else:
+                        parts.append(str(block))
+                else:
+                    parts.append(str(block))
+            return "".join(parts).strip()
+        return str(content).strip()
+
+    @staticmethod
+    def _loads_possible_json(text: str):
+        if not text:
+            raise ValueError("模型未返回内容")
+        try:
+            return json.loads(text)
+        except Exception:
+            pass
+
+        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if fence_match:
+            return json.loads(fence_match.group(1).strip())
+
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            return json.loads(text[start : end + 1].strip())
+        raise ValueError("无法在模型输出中提取有效 JSON")
 
 
 llm_service = LLMService()

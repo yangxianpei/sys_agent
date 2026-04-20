@@ -18,7 +18,7 @@ import {
 import type { UploadProps, UploadUserFile } from 'element-plus'
 import {get_agent_all,create_agent,get_agent_by_id,modfy_agent} from '../../api/agent'
 import {Upload} from '../../api/tool'
-import { id } from 'element-plus/es/locale/index.mjs'
+
 // import { createAgentAPI, updateAgentAPI, getAgentByIdAPI } from '../../apis/agent'
 // import { getVisibleLLMsAPI, getAgentModelsAPI, type LLMResponse } from '../../apis/llm'
 // import { getVisibleToolsAPI, type ToolResponse } from '../../apis/tool'
@@ -239,7 +239,6 @@ const saveAgent = async () => {
       return
     }
     loading.value = true
-    debugger
     // 构建请求数据，确保字段正确
     const requestData = {
       name: formData.name,
@@ -282,23 +281,17 @@ const saveAgent = async () => {
       console.log('创建智能体数据:', requestData)
       const response = await create_agent(requestData)
       
-      if (response.data.status_code === 200) {
+      if (response.code === 200) {
         ElMessage.success('智能体创建成功')
         // 保存成功后跳转到智能体列表页
         router.push('/agent')
       } else {
-        ElMessage.error(response.data.status_message || '创建失败')
+        ElMessage.error('创建失败')
       }
     }
   } catch (error: any) {
     console.error('操作失败:', error)
-    if (error.response?.data?.status_message) {
-      ElMessage.error(error.response.data.status_message)
-    } else if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else {
-      ElMessage.error(isEditing.value ? '智能体更新失败' : '智能体创建失败')
-    }
+
   } finally {
     loading.value = false
   }
@@ -360,7 +353,6 @@ const loadAgentFromAPI = async (agentId: string) => {
     // ElMessage.info('正在加载智能体数据...')
     
     const response = await get_agent_by_id(agentId)
-    debugger
     if (response.code === 200) {
       const agentData = response.data as any
       // console.log('🔍 API返回的智能体原始数据:', agentData)
@@ -412,6 +404,7 @@ const initializeData = async () => {
       mcpOptions.value = d.data.mcps
       llmOptions.value = d.data.llms
       knowledgeOptions.value = d.data.docs.map(item=>({knowledge_id:item.id,...item}))
+      agentSkillOptions.value=d.data.skills
     }
    
 

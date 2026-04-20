@@ -139,14 +139,9 @@ const handleUserCommand = async (command: string) => {
 
 // 退出登录
 const handleLogout = async () => {
-//   try {
-//     await logoutAPI()
-//   } catch (error) {
-//     console.error('调用登出接口失败:', error)
-//   }
-//   userStore.logout()
-//   ElMessage.success('已退出登录')
-//   router.push('/login')
+    localStorage.clear()
+  ElMessage.success('已退出登录')
+  router.push('/login')
 }
 
 // 头像加载错误处理

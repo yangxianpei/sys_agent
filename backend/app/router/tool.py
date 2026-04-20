@@ -30,7 +30,7 @@ async def tool_list(
 ):
     user = request.state.user
     try:
-        item = tool_service.get_tool_list(user_id=user.get("id", ""))
+        item = tool_service.get_tool_list_all(user_id=user.get("id", ""))
         return resp_200(item)
     except Exception as e:
         return resp_500(None)

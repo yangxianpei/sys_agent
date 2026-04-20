@@ -19,7 +19,8 @@
                 "--reload-dir",
                 "app"
             ],
-            "console": "integratedTerminal",
+            "cwd":"${workspaceFolder}",
+            "jinja": true,
             "subProcess": true
         }
     ]

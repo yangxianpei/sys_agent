@@ -41,3 +41,42 @@ class MCPResponseFormat(BaseModel):
         ...,
         description="根据该mcp服务下提供的工具描述生成一个子Agent描述，当主Agent在什么场景下能够调用这个Agent的描述，描述需要加上：子智能体可以调用多个自身工具，所以将用户问题整合询问一次即可。字数在100字符以内",
     )
+
+
+class Agent_Skill_Schema(BaseModel):
+    name: str
+    description: str
+    id: Optional[str] = None
+    folder: Optional[list[str]] = []
+
+
+class AgentSkillFolder(BaseModel):
+    name: str
+    path: str
+    type: str = "folder"
+    folder: List[Any] = []
+
+
+class AgentSkillFileAddReq(BaseModel):
+    path: str
+    name: str
+    agent_skill_id: str
+
+
+class AgentSkillFileUpdateReq(BaseModel):
+    path: str
+    content: str
+    agent_skill_id: str
+
+
+class AgentSkillFile(BaseModel):
+    name: str
+    path: str
+    type: str = "file"
+    content: str
+
+
+class UsageStatsRequest(BaseModel):
+    agent: Optional[str] = None
+    model: Optional[str] = None
+    delta_days: int = 10000

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pydantic import Field, create_model
 from langchain_core.tools import StructuredTool
 import requests
+from app.utils.openai_tool_name import sanitize_openai_tool_name
 
 
 def format_result(data):
@@ -82,8 +83,9 @@ def _build_args_schema(tool_name: str, params):
     return create_model(model_name, **fields)
 
 
-def create_tool(base_url, path, method, params, full_desc):
-    tool_name = f"{method.lower()}_{path.strip('/').replace('/', '_') or 'root'}"
+def create_tool(base_url, path, method, params, full_desc, used_names: set | None = None):
+    raw_name = f"{method.lower()}_{path.strip('/').replace('/', '_') or 'root'}"
+    tool_name = sanitize_openai_tool_name(raw_name, used=used_names)
     args_schema = _build_args_schema(tool_name, params)
 
     async def _acall(**kwargs):
@@ -117,6 +119,7 @@ def create_tool(base_url, path, method, params, full_desc):
 def build_tools_from_openapi(openai_schema):
     tools = []
     base_url = openai_schema["servers"][0]["url"]
+    used_names: set[str] = set()
 
     # 遍历所有路径
     for path, methods in openai_schema["paths"].items():
@@ -156,6 +159,7 @@ def build_tools_from_openapi(openai_schema):
                 method=method,
                 params=params,
                 full_desc=full_desc,
+                used_names=used_names,
             )
 
             tools.append(tool)

@@ -36,3 +36,7 @@ class Config:
     MILVUS_COLLECTION_NAME = os.getenv("MILVUS_COLLECTION_NAME", "")
 
     RERANK_MODEL_NAME = os.getenv("RERANK_MODEL_NAME", "")
+
+    REASONING_MODEL_ID = os.getenv("REASONING_MODEL_ID", "")
+    REASONING_API_KEY = os.getenv("REASONING_API_KEY", "")
+    REASONING_BASE_URL = os.getenv("REASONING_BASE_URL", "")

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, inject } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, inject ,provide} from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { MdPreview } from "md-editor-v3"
@@ -7,6 +7,9 @@ import "md-editor-v3/lib/style.css"
 // import { getWorkspacePluginsAPI, workspaceSimpleChatStreamAPI, type WorkSpaceSimpleTask } from '../../../apis/workspace'
 // import { getVisibleLLMsAPI, type LLMResponse } from '../../../apis/llm'
 // import { useUserStore } from '../../../store/user'
+import {get_model} from '../../api/dashboard'
+import {get_tool_list} from '../../api/tool'
+import {get_mcp_list} from '../../api/mcp'
 import {workspaceSimpleChatStreamAPI} from '../../api/workspace'
 // const userStore = useUserStore()
 import {get_session_by_id} from '../../api/workspace'
@@ -32,7 +35,7 @@ const currentSessionId = ref<string>('')  // 当前会话ID
 const chatConversationRef = ref<HTMLElement | null>(null)  // 聊天容器引用
 const isGenerating = ref(false)  // 是否正在生成回复
 
-const refreshWorkspaceSessions = inject<() => Promise<void>>('refreshWorkspaceSessions')
+const refreshWorkspaceSessions = inject<() => any>('refreshWorkspaceSessions')
 
 // 模型数据（来自应用中心"可见模型"）
 const modelOptions = ref<LLMResponse[]>([])
@@ -48,6 +51,10 @@ const handleAvatarError = (event: Event) => {
     target.src = '/src/assets/user.svg'
   }
 }
+provide('clearMessage', async ()=>{
+  
+    messages.value=[]
+})
 
 const modes = [
   {
@@ -66,15 +73,16 @@ const modes = [
 const fetchModels = async () => {
   modelsLoading.value = true
   try {
-    const res = await getVisibleLLMsAPI()
-    if (res.data && res.data.status_code === 200) {
-      const grouped = res.data.data || {}
+    const res = await get_model()
+
+    if (res.code==200) {
+      const grouped = res.data || {}
       const list: LLMResponse[] = []
       Object.values(grouped).forEach((arr: any) => {
         if (Array.isArray(arr)) list.push(...arr)
       })
       // 仅保留 LLM 类型
-      modelOptions.value = list.filter(m => (m.llm_type || '').toUpperCase() === 'LLM')
+      modelOptions.value =grouped
       // 默认选择第一个
       if (!selectedModelId.value && modelOptions.value.length > 0) {
         selectedModelId.value = modelOptions.value[0].llm_id
@@ -91,9 +99,9 @@ const fetchModels = async () => {
 // 获取可用插件
 const fetchPlugins = async () => {
   try {
-    const response = await getWorkspacePluginsAPI()
-    if (response.data.status_code === 200) {
-      plugins.value = response.data.data || []
+    const response = await get_tool_list()
+    if (response.code === 200) {
+      plugins.value = response.data || []
       console.log('可用插件:', plugins.value)
     }
   } catch (error) {
@@ -202,10 +210,6 @@ const handleSend = async () => {
   // 根据模式跳转到不同的页面
   if (selectedMode.value === 'lingseek') {
     // 灵寻模式：直接跳转到任务流程图页面（三列布局）
-    console.log('跳转到灵寻任务页面')
-    console.log('query:', query)
-    console.log('tools:', selectedTools.value)
-    console.log('webSearch:', webSearchEnabled.value)
     
     // 立即清空输入框
     inputMessage.value = ''
@@ -221,11 +225,7 @@ const handleSend = async () => {
     })
   } else {
     // 日常模式：在本页进行对话（流式）
-    console.log('=== 日常模式发送消息 ===')
-    console.log('selectedModelId:', selectedModelId.value)
-    console.log('query:', query)
-    console.log('session_id:', currentSessionId.value)
-    
+
     // if (!selectedModelId.value) {
     //   ElMessage.warning('请先选择模型')
     //   return
@@ -252,11 +252,10 @@ const handleSend = async () => {
     try {
       const payload:any = {
         query,
-        "model_id":"1361be686781484c884ee3cc4d84efc4",
-        // model_id: selectedModelId.value,
-        // plugins: selectedTools.value,
-        // mcp_servers: selectedMcpServers.value,
-        // session_id: currentSessionId.value  // 添加session_id参数
+        model_id: selectedModelId.value,
+        tools: selectedTools.value,
+        mcp_servers: selectedMcpServers.value,
+        session_id: currentSessionId.value  // 添加session_id参数
       }
       if(currentSessionId.value){
         payload['session_id']=currentSessionId.value
@@ -270,14 +269,21 @@ const handleSend = async () => {
           messages.value[aiMsgIndex].content += chunk
           // 每次收到新内容时自动滚动到底部
           scrollToBottom()
+     
         },
         (err) => {
           console.error('日常模式流式出错', err)
           ElMessage.error('对话失败，请稍后重试')
           isGenerating.value = false  // 出错时解除生成状态
         },
-        () => {
+        async () => {
           console.log('日常模式流式结束')
+          const sessionId = route.query.session_id as string
+          if(!sessionId &&  !currentSessionId.value){
+            currentSessionId.value= await refreshWorkspaceSessions?.()
+
+          }
+          
           isGenerating.value = false  // 完成时解除生成状态
         }
       )
@@ -338,17 +344,15 @@ onMounted(async () => {
     await loadSessionHistory(sessionId)
   }
   
-  // 懒加载 MCP 列表（用于选择）
-  // import('../../../apis/mcp-server').then(async ({ getMCPServersAPI }) => {
-  //   try {
-  //     const res = await getMCPServersAPI()
-  //     if (res.data && res.data.status_code === 200 && Array.isArray(res.data.data)) {
-  //       mcpServers.value = res.data.data
-  //     }
-  //   } catch (e) {
-  //     console.error('加载 MCP 服务器失败', e)
-  //   }
-  // })
+
+  try {
+      const res = await get_mcp_list()
+      if (res.code==200) {
+        mcpServers.value = res.data
+      }
+    } catch (e) {
+      console.error('加载 MCP 服务器失败', e)
+    }
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -386,7 +390,7 @@ watch(
         <div class="avatar-wrapper">
           <img src="../../assets/robot.svg" alt="智言" class="avatar" />
         </div>
-        <h1 class="welcome-title">我是智言小助手，很高兴见到你！</h1>
+        <h1 class="welcome-title">我是Hello Agent，很高兴见到你！</h1>
         <p class="welcome-subtitle">
           欢迎体验智言灵寻LingSeek，一位懂得完成复杂任务的Agent助理~
         </p>
@@ -534,20 +538,20 @@ watch(
                         v-for="plugin in plugins"
                         :key="plugin.id || plugin.tool_id"
                         :class="['dropdown-item', { selected: selectedTools.includes(plugin.id || plugin.tool_id) }]"
-                        @click="toggleTool(plugin.id || plugin.tool_id)"
+                        @click="toggleTool(plugin.tool_id )"
                       >
                         <div class="item-left">
                           <div class="item-icon-wrapper">
                             <img 
-                              v-if="plugin.logo_url" 
-                              :src="plugin.logo_url" 
-                              :alt="plugin.display_name"
+                              v-if="plugin.logo" 
+                              :src="plugin.logo" 
+                              :alt="plugin.name"
                               class="item-icon-img"
                             />
                             <img v-else src="../../assets/plugin.svg" alt="工具" class="item-icon-img" />
                           </div>
                           <div class="item-content">
-                            <div class="item-text">{{ plugin.display_name }}</div>
+                            <div class="item-text">{{ plugin.name }}</div>
                             <div class="item-desc">{{ plugin.description || '暂无描述' }}</div>
                           </div>
                         </div>
@@ -606,26 +610,25 @@ watch(
                       </div>
                       <div
                         v-for="mcp in mcpServers"
-                        :key="mcp.mcp_server_id"
-                        :class="['dropdown-item', { selected: selectedMcpServers.includes(mcp.mcp_server_id) }]"
-                        @click="toggleMcp(mcp.mcp_server_id)"
+                        :key="mcp.mcp_id"
+                        :class="['dropdown-item', { selected: selectedMcpServers.includes(mcp.mcp_id) }]"
+                        @click="toggleMcp(mcp.mcp_id)"
                       >
                         <div class="item-left">
                           <div class="item-icon-wrapper">
                             <img 
-                              v-if="mcp.logo_url" 
-                              :src="mcp.logo_url" 
-                              :alt="mcp.server_name"
+                              v-if="mcp.logo" 
+                              :src="mcp.logo" 
                               class="item-icon-img"
                             />
                             <img v-else src="../../assets/mcp.svg" alt="MCP" class="item-icon-img" />
                           </div>
                           <div class="item-content">
-                            <div class="item-text">{{ mcp.server_name }}</div>
+                            <div class="item-text">{{ mcp.name }}</div>
                           </div>
                         </div>
                         <div 
-                          v-if="selectedMcpServers.includes(mcp.mcp_server_id)" 
+                          v-if="selectedMcpServers.includes(mcp.mcp_id)" 
                           class="item-check-wrapper"
                         >
                           <span class="item-check">✓</span>

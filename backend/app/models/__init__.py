@@ -6,6 +6,7 @@ from .work_session import Session
 from .agent import Agent
 from .knowledge import Knowledge, Knowledge_Doc
 from .dialog import Dialog
+from .agent_skill import AgentSkill
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Knowledge",
     "Knowledge_Doc",
     "Dialog",
+    "AgentSkill",
 ]

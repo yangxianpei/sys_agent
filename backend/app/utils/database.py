@@ -58,3 +58,41 @@ def init_db():
     except Exception as e:
         logger.error(f"初始化数据表结构失败{e}")
         raise
+
+
+def seed_db():
+    """初始化基础数据（幂等执行，可重复调用）。"""
+    from app.models.llm import LLM
+
+    model = (Config.REASONING_MODEL_ID or "").strip()
+    base_url = (Config.REASONING_BASE_URL or "").strip()
+    api_key = (Config.REASONING_API_KEY or "").strip()
+
+    # 关键配置不完整时跳过，避免写入无效初始化数据
+    if not (model and base_url and api_key):
+        logger.info("seed_db 跳过：默认LLM配置不完整")
+        return
+
+    with db_transession() as session:
+        exists = (
+            session.query(LLM)
+            .filter(
+                LLM.user_id.is_(None),
+                LLM.model == model,
+                LLM.base_url == base_url,
+            )
+            .first()
+        )
+        if exists:
+            logger.info("seed_db: 默认LLM已存在，跳过插入")
+            return
+
+        session.add(
+            LLM(
+                model=model,
+                base_url=base_url,
+                api_key=api_key,
+                user_id=None,
+            )
+        )
+        logger.info("seed_db: 默认LLM初始化完成")

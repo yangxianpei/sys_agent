@@ -20,12 +20,17 @@ from app.router.tool import api_router as tool_router
 from app.router.user import api_router
 from app.router.work_session import api_router as work_session_router
 from app.router.dialog import api_router as diolog_session_router
-from app.utils.database import init_db
+from app.router.agent_skill import api_router as agent_skill_session_router
+from app.router.usage_stats import api_router as usage_stats_router
+from app.utils.database import init_db, seed_db
 from app.utils.jwt import verify_token
 from app.utils.logger import get_logger
 
 app = FastAPI(
-    docs_url=None, redoc_url=None, openapi_url=None  # 关闭 Swagger UI  # 关闭 ReDoc
+    title="hello agent",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,  # 关闭 Swagger UI  # 关闭 ReDoc
 )
 
 logger = get_logger(__name__)
@@ -56,6 +61,12 @@ app.include_router(
 app.include_router(
     diolog_session_router, prefix="/api", dependencies=[Depends(verify_token)]
 )
+app.include_router(
+    agent_skill_session_router, prefix="/api", dependencies=[Depends(verify_token)]
+)
+app.include_router(
+    usage_stats_router, prefix="/api", dependencies=[Depends(verify_token)]
+)
 BASE_DIR = Path(__file__).parent.parent
 uploads_dir = BASE_DIR / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -66,9 +77,10 @@ app.mount(
 )
 
 
-# @app.on_event("startup")
-# async def startup_init_db():
-#     init_db()
+@app.on_event("startup")
+async def startup_init_db():
+    init_db()
+    seed_db()
 
 
 @app.exception_handler(FastAPIHTTPException)
@@ -94,6 +106,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def create_app():
     logger.info("初始化应用")
     init_db()
+    seed_db()
     uvicorn.run(
         "app.init:app",
         host=Config.APP_HOST,

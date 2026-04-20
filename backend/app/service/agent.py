@@ -5,11 +5,13 @@ from app.service.mcp.mcpClient import mcp_servcie
 from app.service.tool import tool_service
 from app.service.llm import llm_service
 from app.service.knowledge import knowledge_service
+from app.service.agent_skill import agent_skill_service
 from app.utils.general_agent import GeneralAgent
 from app.models.dialog import Dialog
 from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 import json
+from app.prompts.lingseek import system_prompt
 
 
 class Agent_service(BaseService):
@@ -82,10 +84,17 @@ class Agent_service(BaseService):
 
     async def get_agent_all(self, user_id):
         mcps = await mcp_servcie.get_mcp_list(user_id)
-        tool = tool_service.get_tool_list(user_id)
+        tool = tool_service.get_tool_list_all(user_id)
         llms = llm_service.get_llm_list(user_id)
         docs = knowledge_service.knowledge_list(user_id)
-        return {"tools": tool, "mcps": mcps, "llms": llms, "docs": docs}
+        skills = agent_skill_service.list_agent_skill(user_id)
+        return {
+            "tools": tool,
+            "mcps": mcps,
+            "llms": llms,
+            "docs": docs,
+            "skills": skills,
+        }
 
     def del_agent(self, agent_id):
         with self.transession() as session:
@@ -106,13 +115,13 @@ class Agent_service(BaseService):
             except Exception as e:
                 raise e
 
-    async def completion(self, dialog_id, user_input):
+    async def completion(self, dialog_id, user_input, user_id):
         with self.transession() as session:
             dialog = session.query(Dialog).filter(Dialog.dialog_id == dialog_id).first()
             if dialog:
                 agent = session.query(Agent).filter(Agent.id == dialog.agent_id).first()
                 agent_dict = agent.to_dict()
-                generalAgent = GeneralAgent(agent_dict)
+                generalAgent = GeneralAgent(agent_dict, user_id)
                 await generalAgent.init_agent()
 
                 if dialog.history:
@@ -120,15 +129,20 @@ class Agent_service(BaseService):
                         f"query: {message.get('query')}, answer: {message.get('answer')}\n"
                         for message in dialog.history
                     ]
-                system_prompt = f"""你是一个专业的AI助手，回答要简洁、准确、有礼貌。
-        这是之前的对话历史，请参考上下文回答：
-        {history_messages}
-        你必须遵守规则：
-        调用工具返回结果仅供内部参考，禁止原样输出JSON。
-        请将结果整理为自然语言，给用户清晰回答。
-        """
+                else:
+                    history_messages = []
+                history_prompt = f"""
+                以下是历史记录
+                {"".join(history_messages)}
+                """
+                style_prompt = f"""
+                用户偏好
+                {agent.system_prompt}
+                """
                 messages: List[BaseMessage] = [
                     SystemMessage(content=system_prompt),
+                    SystemMessage(content=style_prompt),
+                    SystemMessage(content=history_prompt),
                     HumanMessage(content=user_input),
                 ]
                 response_content = ""

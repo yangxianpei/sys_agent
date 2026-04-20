@@ -64,10 +64,19 @@ class ToolService(BaseService):
                 session.add(tool)
                 session.flush()
 
-    def get_tool_list(self, user_id):
+    def get_tool_list(self, user_id, tool_ids):
         self.generate_sys_tool()
         with self.session() as session:
-            tools = session.query(Tool).filter(Tool.user_id == user_id).all()
+            tools = session.query(Tool).filter(Tool.tool_id.in_(tool_ids)).all()
+            result = []
+            if tools:
+                result.extend(tool.to_dict() for tool in tools)
+            return result
+
+    def get_tool_list_all(self, user_id):
+        self.generate_sys_tool()
+        with self.session() as session:
+            tools = session.query(Tool).filter(Tool.tool_id == user_id).all()
             sys_tools = session.query(Tool).filter(Tool.user_id.is_(None)).all()
             result = [tool.to_dict() for tool in sys_tools]
             if tools:

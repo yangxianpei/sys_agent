@@ -27,6 +27,7 @@ from mcp.types import CONNECTION_CLOSED
 from contextlib import asynccontextmanager
 import anyio.lowlevel
 from langgraph.config import get_stream_writer
+from app.utils.openai_tool_name import sanitize_openai_tool_name
 
 
 def _json_type_to_python(schema_type: str | None):
@@ -308,7 +309,7 @@ def _message_content_text(message) -> str:
 
 
 def wrap_mcp_agent_as_structured_tool(mcp_agent, mcp_as_tool_name, description):
-    safe_name = _safe_tool_name(mcp_as_tool_name)
+    safe_name = sanitize_openai_tool_name(_safe_tool_name(mcp_as_tool_name))
     safe_desc = str(description or "")[:4000]
 
     async def call_mcp_agent(query: str, config: RunnableConfig):
@@ -348,8 +349,9 @@ def wrap_mcp_agent_as_structured_tool(mcp_agent, mcp_as_tool_name, description):
     )
 
 
-def build_tool(mcp_service, t):
+def build_tool(mcp_service, t, used_names: set | None = None):
     tool_name, tool_desc, input_schema = _extract_tool_meta(t)
+    api_tool_name = sanitize_openai_tool_name(tool_name, used=used_names)
     args_schema, full_desc = _build_mcp_langchain_parts(
         tool_name, tool_desc, input_schema
     )
@@ -369,13 +371,13 @@ def build_tool(mcp_service, t):
 
     return StructuredTool.from_function(
         coroutine=call_mcp_tool,
-        name=tool_name,
+        name=api_tool_name,
         description=full_desc,
         args_schema=args_schema,
     )
 
 
-async def list_tools_for_service(mcp_service, llm_id: str | None = None):
+async def list_tools_for_service(mcp_service, father_self, llm_id: str | None = None):
     async def list_from_session(session: ClientSession):
         try:
             tools_result = await session.list_tools()
@@ -388,14 +390,15 @@ async def list_tools_for_service(mcp_service, llm_id: str | None = None):
         lambda: _mcp_session_run(mcp_service, list_from_session),
     )
 
-    tools = [build_tool(mcp_service, t) for t in raw_tools]
+    used_names: set[str] = set()
+    tools = [build_tool(mcp_service, t, used_names) for t in raw_tools]
 
     if not (llm_id and str(llm_id).strip()):
         return tools
 
     first_server = get_first_mcp_server(mcp_service) or {}
     server_label = str(first_server.get("name") or "MCP")
-    mcp_agent = MCPAgent(tools, llm_id, server_name=server_label)
+    mcp_agent = MCPAgent(tools, llm_id, father_self, server_name=server_label)
     structured_response = await mcp_agent.generate_name_description(tools)
     return wrap_mcp_agent_as_structured_tool(
         mcp_agent,
@@ -405,12 +408,15 @@ async def list_tools_for_service(mcp_service, llm_id: str | None = None):
 
 
 class MCPAgent:
-    def __init__(self, tools, llm_id, server_name: str | None = None):
+    def __init__(self, tools, llm_id, father_self, server_name: str | None = None):
+        from app.utils.llm import ToolTraceHandler
+
         self.tools = tools
         self.server_name = (server_name or "MCP").strip() or "MCP"
         self.llm = None
         self.agent = None
         middleware = self.setup_agent_middlewares()
+        self.father_self = father_self
         with db_session() as session:
             llm_config = session.query(LLM).filter(LLM.llm_id == llm_id).first()
             if llm_config:
@@ -425,7 +431,7 @@ class MCPAgent:
                     model=self.llm,
                     tools=self.tools,
                     middleware=middleware,
-                )
+                ).with_config({"callbacks": [ToolTraceHandler(father_self)]})
 
     async def emit_event(self, event):
         try:
@@ -448,6 +454,8 @@ class MCPAgent:
         return messages
 
     async def generate_name_description(self, tools):
+        from app.utils.llm import ToolTraceHandler
+
         tool_list = [
             {"name": n, "description": d, "input_schema": s}
             for n, d, s in (_extract_tool_meta(t) for t in tools)
@@ -457,7 +465,7 @@ class MCPAgent:
 """
         agent = create_agent(
             model=self.llm, response_format=ToolStrategy(MCPResponseFormat)
-        )
+        ).with_config({"callbacks": [ToolTraceHandler(self.father_self)]})
         result = agent.invoke({"messages": [HumanMessage(content=prompt)]})
         return result["structured_response"]
 
