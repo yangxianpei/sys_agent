@@ -274,7 +274,6 @@ onMounted(() => {
             <img 
               :src="agent.logo || '/src/assets/robot.svg'" 
               :alt="agent.name"
-              @error="handleImageError"
             />
           </div>
           

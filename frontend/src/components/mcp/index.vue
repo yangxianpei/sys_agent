@@ -726,7 +726,6 @@ const uploadUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/upload`
               <img 
                 :src="row.logo_url || '/src/assets/robot.svg'" 
                 :alt="row.server_name"
-                @error="handleImageError"
               />
             </div>
           </template>
