@@ -417,7 +417,7 @@ watch(
             <div class="message-content">
               <span>{{ msg.content }}</span>
             </div>
-            <img :src="userStore?.userInfo?.avatar || '/src/assets/user.svg'" alt="User Avatar" class="avatar" @error="handleAvatarError" />
+            <img :src="userStore?.userInfo?.avatar || '/src/assets/user.svg'" alt="User Avatar" class="avatar"  />
           </div>
           
           <!-- AI Message -->

@@ -280,7 +280,6 @@ selectedSession<template>
                 <img
                   :src="userStore.userInfo?.avatar || '/src/assets/user.svg'"
                   alt="用户头像"
-                  @error="handleAvatarError"
                   referrerpolicy="no-referrer"
                 />
               </div>

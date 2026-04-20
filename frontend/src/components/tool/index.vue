@@ -735,7 +735,6 @@ console.log(tools)
             <div class="tool-avatar">
               <img 
                 :src="tool.logo || '/src/assets/help.png'" 
-                @error="(e) => { const target = e.target as HTMLImageElement; target.src = '/src/assets/help.png' }"
               />
             </div>
           </div>
