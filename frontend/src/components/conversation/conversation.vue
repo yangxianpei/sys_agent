@@ -434,6 +434,7 @@ const closeCreateDialog = () => {
               </svg>
               <input
                 v-model="agentSearchKeyword"
+                autocomplete="off"
                 placeholder="搜索智能体名称或描述..."
                 class="search-input"
               />

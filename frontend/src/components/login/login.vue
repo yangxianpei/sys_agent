@@ -172,6 +172,8 @@ const login_handle = async () => {
             <el-input
               v-model="loginForm.username"
               placeholder="请输入账号"
+              name="login_username"
+              autocomplete="off"
               size="large"
               class="login-input"
               @change="handleLogin"
@@ -184,6 +186,8 @@ const login_handle = async () => {
              v-model="loginForm.password"
               type="password"
               placeholder="请输入密码"
+              name="login_password"
+              autocomplete="new-password"
               size="large"
               class="login-input"
               show-password

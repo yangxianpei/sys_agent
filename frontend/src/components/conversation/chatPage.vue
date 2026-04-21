@@ -459,6 +459,7 @@ watch(
         <el-input
           v-model="searchInput"
           type="textarea"
+          autocomplete="off"
           :autosize="{ minRows: 1, maxRows: 4 }"
           placeholder="请输入您的问题..."
           @keydown.enter.exact.prevent="personQuestion"
