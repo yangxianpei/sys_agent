@@ -73,11 +73,12 @@ class McpServcie(BaseService):
 
     async def get_mcp_list(self, user_id):
         with self.transession() as session:
-            mcp_list = session.query(Mcp).filter(Mcp.user_id == user_id).all()
-            if mcp_list is not None:
-                return [mcp.to_dict() for mcp in mcp_list]
-            else:
-                return []
+            user_mcps = session.query(Mcp).filter(Mcp.user_id == user_id).all()
+            sys_mcps = session.query(Mcp).filter(Mcp.user_id.is_(None)).all()
+            result = [mcp.to_dict() for mcp in sys_mcps]
+            if user_mcps:
+                result.extend(mcp.to_dict() for mcp in user_mcps)
+            return result
 
     async def modify_mcp(self, mcp_name, mcp_id, mcpServers, logo):
         with self.transession() as session:

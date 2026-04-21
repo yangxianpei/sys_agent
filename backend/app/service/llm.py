@@ -19,6 +19,7 @@ from app.schema.lingseek import LingSeekTask, LingSeekTaskStep
 from app.utils.helper import get_beijing_time
 from typing import Any, Dict, List, Union, Optional
 from app.utils.logger import get_logger
+from sqlalchemy import or_
 
 logger = get_logger(__name__)
 
@@ -49,7 +50,7 @@ class LLMService(BaseService):
         with self.session() as session:
             llms = (
                 session.query(LLM)
-                .filter(LLM.user_id == user_id | LLM.user_id.is_(None))
+                .filter(or_(LLM.user_id == user_id, LLM.user_id.is_(None)))
                 .all()
             )
             result = []

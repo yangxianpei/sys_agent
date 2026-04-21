@@ -22,7 +22,7 @@ class Mcp(BaseModel):
 
     logo: Mapped[str] = mapped_column(String(128))
     name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("user.id"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=True)
     user_name: Mapped[str] = mapped_column(String(128), nullable=False)
     connect_type: Mapped[str] = mapped_column(String(64), default=True, nullable=False)
     # description="sse ,stdio ,http"
