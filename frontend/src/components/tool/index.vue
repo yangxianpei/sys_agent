@@ -734,7 +734,7 @@ console.log(tools)
           <div class="col-icon">
             <div class="tool-avatar">
               <img 
-                :src="tool.logo || '/src/assets/help.png'" 
+                :src="tool.logo || '/default.png'" 
               />
             </div>
           </div>

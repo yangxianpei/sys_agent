@@ -430,7 +430,19 @@ onUnmounted(() => {
 const uploadData = reactive({
   knowledge_id: knowledgeId,
 })
-const uploadUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge_upload_doc`
+
+/** 兼容 base 为 `/` 或空字符串，避免生成 `//api/...` 被浏览器解析为 `http://api/...` */
+function resolveApiUrl(path: string): string {
+  const raw = import.meta.env.VITE_API_BASE_URL ?? ''
+  const suffix = path.startsWith('/') ? path : `/${path}`
+  const base = raw.replace(/\/$/, '')
+  if (!base) {
+    return suffix
+  }
+  return `${base}${suffix}`
+}
+
+const uploadUrl = resolveApiUrl('/api/v1/knowledge_upload_doc')
 </script>
 
 <template>
