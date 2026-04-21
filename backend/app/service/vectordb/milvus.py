@@ -264,11 +264,14 @@ class Milvus(BaseService):
 
     def init_milvus(self):
         if not self.inited:
-            logger.info("初始化MILVUS")
-            self.client = MilvusClient(uri=Config.MILVUS)
-            logger.info("初始化MILVUS成功")
-            self.init_embed()
-            self.inited = True
+            try:
+                logger.info("初始化MILVUS")
+                self.client = MilvusClient(uri=Config.MILVUS)
+                logger.info("初始化MILVUS成功")
+                self.init_embed()
+                self.inited = True
+            except Exception as e:
+                logger.info(f"{e}")
 
     def file_parse(self, file, file_type):
         return DocumentLoader.load(file, file_type)
