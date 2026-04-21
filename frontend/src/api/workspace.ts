@@ -1,9 +1,15 @@
 import { request, post, get, del } from '../utils/request'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const SIMPLE_CHAT_PATH = '/api/v1/simple/chat'
-const WORKSPACE_SIMPLE_CHAT_FALLBACK_PATH = '/api/v1/workspace/simple/chat'
+function resolveApiUrl(path: string): string {
+    const raw = import.meta.env.VITE_API_BASE_URL ?? ''
+    const suffix = path.startsWith('/') ? path : `/${path}`
+    const base = raw.replace(/\/$/, '')
+    if (!base) {
+        return suffix
+    }
+    return `${base}${suffix}`
+}
 
 export const session_list = () => {
     return get('/api/v1/session_list')
@@ -19,26 +25,12 @@ export interface WorkSpaceSimpleTask {
 }
 
 export const workspaceSimpleChatAPI = async (data: WorkSpaceSimpleTask) => {
-    try {
-        return await request({
-            url: SIMPLE_CHAT_PATH,
-            method: 'post',
-            data,
-            responseType: 'stream'
-        })
-    } catch (error: any) {
-        // 兼容旧后端路径，避免部分环境还未切换导致 404
-        const status = error?.response?.status
-        if (status === 404) {
-            return request({
-                url: WORKSPACE_SIMPLE_CHAT_FALLBACK_PATH,
-                method: 'post',
-                data,
-                responseType: 'stream'
-            })
-        }
-        throw error
-    }
+    return request({
+        url: '/api/v1/workspace/simple/chat',
+        method: 'post',
+        data,
+        responseType: 'stream'
+    })
 }
 
 // 工作区日常对话（SSE 流式）
@@ -54,7 +46,8 @@ export const workspaceSimpleChatStreamAPI = async (
 
 
     try {
-        await fetchEventSource(`${BASE_URL}${SIMPLE_CHAT_PATH}`, {
+        // 与 workspaceSimpleChatAPI 保持一致；此前 /api/v1/simple/chat 易 404
+        await fetchEventSource(resolveApiUrl('/api/v1/simple/chat'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -153,7 +146,7 @@ export const generateLingSeekGuidePromptAPI = async (
     const ctrl = new AbortController()
 
     try {
-        await fetchEventSource(`${BASE_URL}/api/v1/lingseek/guide_prompt`, {
+        await fetchEventSource(resolveApiUrl('/api/v1/lingseek/guide_prompt'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -195,7 +188,7 @@ export const generateLingSeekGuidePromptAPI = async (
                 onClose?.()
             }
         })
-    } catch (error: any) {
+    } catch (error) {
         console.error('fetchEventSource 异常:', error)
         if (error.name !== 'AbortError') {
             onError?.(error)
@@ -227,7 +220,7 @@ export const startLingSeekTaskAPI = async (
     const ctrl = new AbortController()
 
     try {
-        await fetchEventSource(`${BASE_URL}/api/v1/task_start`, {
+        await fetchEventSource(resolveApiUrl('/api/v1/task_start'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -238,6 +231,7 @@ export const startLingSeekTaskAPI = async (
             openWhenHidden: true,
             onmessage(event) {
                 console.log('📨 收到原始消息:', event.data)
+                debugger
                 if (event.data) {
                     try {
                         // 后端返回的是 JSON 格式: { "event": "...", "data": {...} }
@@ -283,7 +277,7 @@ export const startLingSeekTaskAPI = async (
                 onClose?.()
             }
         })
-    } catch (error: any) {
+    } catch (error) {
         console.error('fetchEventSource 异常:', error)
         if (error.name !== 'AbortError') {
             onError?.(error)
@@ -293,10 +287,10 @@ export const startLingSeekTaskAPI = async (
 
 
 
-export function sendMessage(data: any, onmessage: any, onclose: any) {
+export function sendMessage(data, onmessage: any, onclose: any) {
     const ctrl = new AbortController();
 
-    fetchEventSource(`${BASE_URL}/api/v1/completion`, {
+    fetchEventSource(resolveApiUrl('/api/v1/completion'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
