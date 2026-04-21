@@ -393,13 +393,13 @@ const fetchTools = async () => {
 
    let data= response.data.map(item=>{
       if(item.name =='生成彩虹屁夸人语句'){
-        item.logo ='/public/生成彩虹屁夸人语句.png'
+        item.logo ='/生成彩虹屁夸人语句.png'
       }
       if(item.name =='获取笑话'){
-        item.logo ='/public/获取笑话.png'
+        item.logo ='/获取笑话.png'
       }
       if(item.name =='查询IP信息'){
-        item.logo ='/public/查询IP信息.png'
+        item.logo ='/查询IP信息.png'
       }
       return item
     })
