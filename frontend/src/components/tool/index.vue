@@ -221,18 +221,7 @@ const parseOpenAPISchema = () => {
   }
 }
 
-// 获取默认头像
-const getDefaultLogo = async () => {
-  try {
-    const response = await getDefaultToolLogoAPI()
-    if (response.data.status_code === 200) {
-      logoPreview.value = response.data.data.logo_url
-      createForm.value.logo_url = response.data.data.logo_url
-    }
-  } catch (error) {
-    console.error('获取默认头像失败:', error)
-  }
-}
+
 
 // 处理头像上传
 const handleLogoUpload = async (event: Event) => {
@@ -597,8 +586,6 @@ const resetCreateForm = () => {
   authMethod.value = ''
   apiKeyValue.value = ''
   availableTools.value = []
-  // 重新获取默认头像
-  getDefaultLogo()
 }
 
 // 重置编辑表单
@@ -657,7 +644,6 @@ onMounted(() => {
   console.log('用户信息:', userStore.userInfo)
   console.log('是否登录:', userStore.isLoggedIn)
   fetchTools()
-  getDefaultLogo()
 })
 console.log(tools)
 </script>

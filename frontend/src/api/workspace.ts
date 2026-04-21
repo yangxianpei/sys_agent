@@ -2,6 +2,8 @@ import { request, post, get, del } from '../utils/request'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const SIMPLE_CHAT_PATH = '/api/v1/simple/chat'
+const WORKSPACE_SIMPLE_CHAT_FALLBACK_PATH = '/api/v1/workspace/simple/chat'
 
 export const session_list = () => {
     return get('/api/v1/session_list')
@@ -17,12 +19,26 @@ export interface WorkSpaceSimpleTask {
 }
 
 export const workspaceSimpleChatAPI = async (data: WorkSpaceSimpleTask) => {
-    return request({
-        url: '/api/v1/workspace/simple/chat',
-        method: 'post',
-        data,
-        responseType: 'stream'
-    })
+    try {
+        return await request({
+            url: SIMPLE_CHAT_PATH,
+            method: 'post',
+            data,
+            responseType: 'stream'
+        })
+    } catch (error: any) {
+        // 兼容旧后端路径，避免部分环境还未切换导致 404
+        const status = error?.response?.status
+        if (status === 404) {
+            return request({
+                url: WORKSPACE_SIMPLE_CHAT_FALLBACK_PATH,
+                method: 'post',
+                data,
+                responseType: 'stream'
+            })
+        }
+        throw error
+    }
 }
 
 // 工作区日常对话（SSE 流式）
@@ -38,8 +54,7 @@ export const workspaceSimpleChatStreamAPI = async (
 
 
     try {
-        // 与 workspaceSimpleChatAPI 保持一致；此前 /api/v1/simple/chat 易 404
-        await fetchEventSource(`${BASE_URL}/api/v1/simple/chat`, {
+        await fetchEventSource(`${BASE_URL}${SIMPLE_CHAT_PATH}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -180,7 +195,7 @@ export const generateLingSeekGuidePromptAPI = async (
                 onClose?.()
             }
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error('fetchEventSource 异常:', error)
         if (error.name !== 'AbortError') {
             onError?.(error)
@@ -223,7 +238,6 @@ export const startLingSeekTaskAPI = async (
             openWhenHidden: true,
             onmessage(event) {
                 console.log('📨 收到原始消息:', event.data)
-                debugger
                 if (event.data) {
                     try {
                         // 后端返回的是 JSON 格式: { "event": "...", "data": {...} }
@@ -269,7 +283,7 @@ export const startLingSeekTaskAPI = async (
                 onClose?.()
             }
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error('fetchEventSource 异常:', error)
         if (error.name !== 'AbortError') {
             onError?.(error)
@@ -279,7 +293,7 @@ export const startLingSeekTaskAPI = async (
 
 
 
-export function sendMessage(data, onmessage: any, onclose: any) {
+export function sendMessage(data: any, onmessage: any, onclose: any) {
     const ctrl = new AbortController();
 
     fetchEventSource(`${BASE_URL}/api/v1/completion`, {
