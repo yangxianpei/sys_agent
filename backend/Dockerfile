@@ -23,10 +23,10 @@ ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 COPY pyproject.toml uv.lock /app/
 
 # 安装依赖
-RUN uv sync
+# RUN uv sync
 
 # 复制代码
 COPY . /app
 
-CMD ["uv", "run", "main.py"]
-# CMD ["sh", "-c", "uv sync --no-dev && uv run main.py"]
+# CMD ["uv", "run", "main.py"]
+CMD ["sh", "-c", "uv sync --no-dev && uv run main.py"]
