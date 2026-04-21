@@ -8,6 +8,7 @@ from app.models.llm import LLM
 from app.models.agent import Agent
 from app.schema.agent import UsageStatsRequest
 from app.models.usage_stats import Usage_stats as Usage
+from sqlalchemy import or_
 
 
 class Usage_stats(BaseService):
@@ -18,7 +19,7 @@ class Usage_stats(BaseService):
         with self.session() as session:
             llms = (
                 session.query(LLM)
-                .filter(LLM.user_id == user_id or LLM.user_id.is_(None))
+                .filter(or_(LLM.user_id == user_id, LLM.user_id.is_(None)))
                 .all()
             )
             return [llm.to_dict() for llm in llms]

@@ -34,3 +34,7 @@ services:
 
 volumes:
   yxp_agent_db_data:
+  
+networks:
+  default:
+    name: milvus

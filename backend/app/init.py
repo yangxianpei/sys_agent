@@ -77,10 +77,10 @@ app.mount(
 )
 
 
-@app.on_event("startup")
-async def startup_init_db():
-    init_db()
-    seed_db()
+# @app.on_event("startup")
+# async def startup_init_db():
+#     init_db()
+#     seed_db()
 
 
 @app.exception_handler(FastAPIHTTPException)
