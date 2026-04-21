@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { loginAPI } from '../../api/login'
@@ -13,7 +13,19 @@ const loginForm = reactive({
   password: ''
 })
 
-// const loading = ref(false)
+const loading = ref(false)
+const PERFORMANCE_MODE_KEY = 'login-performance-mode'
+const isPerformanceMode = ref(false)
+
+onMounted(() => {
+  const mode = localStorage.getItem(PERFORMANCE_MODE_KEY)
+  isPerformanceMode.value = mode === 'lite'
+})
+
+const togglePerformanceMode = () => {
+  isPerformanceMode.value = !isPerformanceMode.value
+  localStorage.setItem(PERFORMANCE_MODE_KEY, isPerformanceMode.value ? 'lite' : 'full')
+}
 
 // const handleLogin = async () => {
 //   if (!loginForm.username || !loginForm.password) {
@@ -82,23 +94,34 @@ const goToRegister = () => {
 const handleLogin=(e:any)=>{
   console.log(e)
 }
-const login_handle= async ()=>{
-  const d=await loginAPI(loginForm)
-  debugger
-  if(d.code ==200){
-    ElMessage.success('登录成功')
-    userStore.setUserInfo(d.data)
-    router.push('/')
-  }else{
-    ElMessage.error('登录失败')
+const login_handle = async () => {
+  if (loading.value) return
+  if (!loginForm.username || !loginForm.password) {
+    ElMessage.warning('请输入用户名和密码')
+    return
   }
 
+  try {
+    loading.value = true
+    const d = await loginAPI(loginForm)
+    if (d.code == 200) {
+      ElMessage.success('登录成功')
+      userStore.setUserInfo(d.data)
+      router.push('/')
+    } else {
+      ElMessage.error('登录失败')
+    }
+  } catch (error) {
+    ElMessage.error('登录失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 
 </script>
 
 <template>
-  <div class="login-container">
+  <div class="login-container" :class="{ 'perf-lite': isPerformanceMode }">
     <!-- 左侧3D图形区域 -->
     <div class="left-section">
       <div class="graphic-container">
@@ -137,6 +160,9 @@ const login_handle= async ()=>{
             <span class="logo-text">HelloAgent</span>
           </div>
           <p class="subtitle">更智能、更多元的大模型应用开发平台</p>
+          <button class="perf-toggle" type="button" @click="togglePerformanceMode">
+            {{ isPerformanceMode ? '切换炫酷动画' : '切换流畅模式' }}
+          </button>
         </div>
 
         <!-- 登录表单 -->
@@ -175,6 +201,8 @@ const login_handle= async ()=>{
             type="primary"
             size="large"
             class="login-button"
+            :loading="loading"
+            :disabled="loading"
             @click="login_handle"
           >
             登录
@@ -193,11 +221,45 @@ const login_handle= async ()=>{
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
+.login-container.perf-lite {
+  .left-section .graphic-container {
+    .mesh-blobs .blob {
+      filter: blur(20px);
+      opacity: 0.3;
+      animation-duration: 42s;
+    }
+
+    .mesh-blobs .blob-c,
+    .hub-ring.ring-3,
+    .orbit-cube,
+    .float-orb {
+      display: none;
+    }
+
+    .hub-glow {
+      animation-duration: 10s;
+    }
+
+    .hub-ring.ring-1 {
+      animation-duration: 50s;
+    }
+
+    .hub-ring.ring-2 {
+      animation-duration: 42s;
+    }
+
+    .mini-cube .mc {
+      backdrop-filter: none;
+    }
+  }
+}
+
 .left-section {
   flex: 1;
   position: relative;
   overflow: hidden;
   min-height: 100%;
+  contain: layout paint style;
 
   .graphic-container {
     position: absolute;
@@ -224,9 +286,10 @@ const login_handle= async ()=>{
       .blob {
         position: absolute;
         border-radius: 50%;
-        filter: blur(64px);
-        opacity: 0.5;
-        animation: blobDrift 22s ease-in-out infinite;
+        filter: blur(42px);
+        opacity: 0.42;
+        animation: blobDrift 30s ease-in-out infinite;
+        will-change: transform;
 
         &.blob-a {
           width: min(52vmin, 520px);
@@ -310,7 +373,8 @@ const login_handle= async ()=>{
         rgba(79, 129, 255, 0.14) 48%,
         transparent 72%
       );
-      animation: pulseGlow 4.5s ease-in-out infinite;
+      animation: pulseGlow 7s ease-in-out infinite;
+      will-change: transform, opacity;
     }
 
     .hub-sphere {
@@ -323,7 +387,8 @@ const login_handle= async ()=>{
       border-radius: 50%;
       background: radial-gradient(circle at 32% 28%, #e8f0ff 0%, #6b9eff 38%, #3b66db 88%);
       box-shadow: 0 0 56px rgba(79, 129, 255, 0.55), inset 0 -14px 28px rgba(30, 58, 138, 0.35);
-      animation: hubFloat 5s ease-in-out infinite;
+      animation: hubFloat 8s ease-in-out infinite;
+      will-change: transform;
     }
 
     .hub-ring {
@@ -340,7 +405,7 @@ const login_handle= async ()=>{
         height: 280px;
         margin: -140px 0 0 -140px;
         transform: rotateX(76deg);
-        animation: spinRing 22s linear infinite;
+        animation: spinRing 34s linear infinite;
       }
 
       &.ring-2 {
@@ -349,7 +414,7 @@ const login_handle= async ()=>{
         margin: -182px 0 0 -182px;
         border-color: rgba(255, 255, 255, 0.22);
         transform: rotateX(76deg) rotateZ(18deg);
-        animation: spinRingReverse 16s linear infinite;
+        animation: spinRingReverse 28s linear infinite;
       }
 
       &.ring-3 {
@@ -358,7 +423,7 @@ const login_handle= async ()=>{
         margin: -224px 0 0 -224px;
         border-color: rgba(255, 255, 255, 0.14);
         transform: rotateX(76deg) rotateZ(-24deg);
-        animation: spinRingTilt 28s linear infinite;
+        animation: spinRingTilt 40s linear infinite;
       }
     }
 
@@ -369,7 +434,8 @@ const login_handle= async ()=>{
       width: 1px;
       height: 1px;
       transform-style: preserve-3d;
-      animation: orbitSpin 14s linear infinite;
+      animation: orbitSpin 22s linear infinite;
+      will-change: transform;
     }
 
     .mini-cube {
@@ -381,7 +447,8 @@ const login_handle= async ()=>{
       margin: -38px 0 0 -38px;
       transform-style: preserve-3d;
       transform: translateX(226px) rotateX(-12deg) rotateY(24deg);
-      animation: cubeSelfSpin 6s linear infinite;
+      animation: cubeSelfSpin 12s linear infinite;
+      will-change: transform;
 
       .mc {
         position: absolute;
@@ -389,7 +456,7 @@ const login_handle= async ()=>{
         height: 76px;
         border: 1px solid rgba(255, 255, 255, 0.38);
         background: linear-gradient(145deg, rgba(79, 129, 255, 0.42), rgba(59, 102, 219, 0.22));
-        backdrop-filter: blur(6px);
+        backdrop-filter: blur(2px);
 
         &.f {
           transform: rotateY(0deg) translateZ(38px);
@@ -423,7 +490,7 @@ const login_handle= async ()=>{
         height: 22px;
         left: 6%;
         top: 18%;
-        animation: floatOrbA 7s ease-in-out infinite;
+        animation: floatOrbA 11s ease-in-out infinite;
       }
 
       &.orb-2 {
@@ -431,9 +498,30 @@ const login_handle= async ()=>{
         height: 16px;
         right: 8%;
         bottom: 22%;
-        animation: floatOrbB 9s ease-in-out infinite;
+        animation: floatOrbB 13s ease-in-out infinite;
       }
     }
+  }
+}
+
+@media (max-width: 1200px) {
+  .left-section .graphic-container {
+    .mesh-blobs .blob {
+      filter: blur(30px);
+      opacity: 0.34;
+    }
+
+    .hub-ring.ring-3,
+    .float-orb {
+      display: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .left-section .graphic-container * {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -477,6 +565,24 @@ const login_handle= async ()=>{
         line-height: 1.6;
         font-weight: 400;
         font-family: 'PingFang SC', 'Helvetica Neue', 'Arial', sans-serif;
+      }
+
+      .perf-toggle {
+        margin-top: 12px;
+        border: 1px solid #d8e3f7;
+        background: #f4f8ff;
+        color: #3b66db;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #eaf2ff;
+          border-color: #bcd1f7;
+        }
       }
     }
 

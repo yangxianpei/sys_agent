@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElLoading } from 'element-plus'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -168,6 +169,35 @@ const router = createRouter({
         //   component: () => import('../views/AboutView.vue'),
         // },
     ],
+})
+
+let routeLoading: ReturnType<typeof ElLoading.service> | null = null
+
+const closeRouteLoading = () => {
+    if (routeLoading) {
+        routeLoading.close()
+        routeLoading = null
+    }
+}
+
+router.beforeEach((to, from, next) => {
+    if (to.fullPath !== from.fullPath) {
+        closeRouteLoading()
+        routeLoading = ElLoading.service({
+            lock: true,
+            text: '页面加载中...',
+            background: 'rgba(255, 255, 255, 0.35)',
+        })
+    }
+    next()
+})
+
+router.afterEach(() => {
+    closeRouteLoading()
+})
+
+router.onError(() => {
+    closeRouteLoading()
 })
 
 export default router
