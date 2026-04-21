@@ -626,7 +626,7 @@ const insertExampleConfig = () => {
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/src/assets/robot.svg'
+    target.src = '/robot.svg'
   }
 }
 
@@ -724,7 +724,7 @@ const uploadUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/upload`
           <template #default="{ row }">
             <div class="server-avatar">
               <img 
-                :src="row.logo_url || '/src/assets/robot.svg'" 
+                :src="row.logo_url || '/robot.svg'" 
                 :alt="row.server_name"
               />
             </div>

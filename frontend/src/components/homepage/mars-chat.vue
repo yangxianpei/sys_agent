@@ -110,7 +110,17 @@ import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { ElMessage } from 'element-plus'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
+/** 拼接后端 API：base 为 `/` 时不能用 `base + '/api/...'`，会变成 `//api/...` 被解析成主机名 api */
+function resolveApiUrl(path: string): string {
+    const raw = import.meta.env.VITE_API_BASE_URL ?? ''
+    const suffix = path.startsWith('/') ? path : `/${path}`
+    const base = raw.replace(/\/$/, '')
+    if (!base) {
+        return suffix
+    }
+    return `${base}${suffix}`
+}
 // 响应式数据
 const route = useRoute()
 const router = useRouter()
@@ -230,7 +240,7 @@ const sendMessage = async (userMessage: string) => {
   startTypingTimer()
 
   try {
-    await fetchEventSource(BASE_URL+'/api/v1/mars/chat', {
+    await fetchEventSource(resolveApiUrl('/api/v1/mars/chat'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -428,7 +438,7 @@ const sendExampleRequest = async (exampleId: number) => {
   startTypingTimer()
 
   try {
-    await fetchEventSource(BASE_URL+'/api/v1/mars/example', {
+    await fetchEventSource(resolveApiUrl('/api/v1/mars/example'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

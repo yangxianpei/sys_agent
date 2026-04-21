@@ -187,7 +187,7 @@ const refreshAgents = async () => {
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/src/assets/robot.svg'
+    target.src = '/robot.svg'
   }
 }
 
@@ -272,7 +272,7 @@ onMounted(() => {
           
           <div class="agent-avatar">
             <img 
-              :src="agent.logo || '/src/assets/robot.svg'" 
+              :src="agent.logo || '/robot.svg'" 
               :alt="agent.name"
             />
           </div>

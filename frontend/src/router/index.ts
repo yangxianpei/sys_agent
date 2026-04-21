@@ -1,25 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../components/home/index.vue'
-import Login from '../components/login/login.vue'
-import Register from '../components/login/register.vue'
-import Mcp from "../components/mcp/index.vue"
-import Tool from "../components/tool/index.vue"
-import Model from "../components/model/index.vue"
-import Workspace from "../components/workspace/index.vue"
-import WorkspaceDefaultPage from "../components/workspace/defaultPage.vue"
-import WorkspacePage from "../components/workspace/workspacePage.vue"
-import TaskGraphPage from '../components/workspace/taskGraphPage.vue'
-import Agent from '../components/agent/agent.vue'
-import AgentEditor from '../components/agent/agent-editor.vue'
-import Knowledge from '../components/knowledge/knowledge.vue'
-import KnowledgeFile from '../components/knowledge/knowledge-file.vue'
-import Conversation from '../components/conversation/conversation.vue'
-import ChatPage from '../components/conversation/chatPage.vue'
-import DefaultPage from '../components/conversation/defaultPage.vue'
-import AgentSkill from '../components/skill/agent-skill.vue'
-import Homepage from '../components/homepage/homepage.vue'
-import MarsChat from '../components/homepage/mars-chat.vue'
-import Dashboard from '../components/dashboard/dashboard.vue'
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
@@ -27,12 +7,12 @@ const router = createRouter({
             path: '/',
             name: 'home',
             redirect: '/workspace',
-            component: HomeView,
+            component: () => import('../components/home/index.vue'),
             children: [
                 {
                     path: '/conversation',
                     name: 'conversation',
-                    component: Conversation,
+                    component: () => import('../components/conversation/conversation.vue'),
                     meta: {
                         current: 'conversation'
                     },
@@ -40,19 +20,19 @@ const router = createRouter({
                         {
                             path: '/conversation/',
                             name: 'defaultPage',
-                            component: DefaultPage,
+                            component: () => import('../components/conversation/defaultPage.vue'),
                         },
                         {
                             path: '/conversation/chatPage',
                             name: 'chatPage',
-                            component: ChatPage,
+                            component: () => import('../components/conversation/chatPage.vue'),
                         }
                     ]
                 },
                 {
                     path: '/dashboard',
                     name: 'dashboard',
-                    component: Dashboard,
+                    component: () => import('../components/dashboard/dashboard.vue'),
                     meta: {
                         current: 'dashboard'
                     }
@@ -60,7 +40,7 @@ const router = createRouter({
                 {
                     path: '/homepage',
                     name: 'homepage',
-                    component: Homepage,
+                    component: () => import('../components/homepage/homepage.vue'),
                     meta: {
                         current: 'homepage'
                     }
@@ -71,12 +51,12 @@ const router = createRouter({
                     meta: {
                         current: 'mars'
                     },
-                    component: MarsChat,
+                    component: () => import('../components/homepage/mars-chat.vue'),
                 },
                 {
                     path: '/agent-skill',
                     name: 'agent-skill',
-                    component: AgentSkill,
+                    component: () => import('../components/skill/agent-skill.vue'),
                     meta: {
                         current: 'agent-skill'
                     }
@@ -84,7 +64,7 @@ const router = createRouter({
                 {
                     path: '/mcp-server',
                     name: 'mcp-server',
-                    component: Mcp,
+                    component: () => import('../components/mcp/index.vue'),
                     meta: {
                         current: 'mcp-server'
                     }
@@ -92,7 +72,7 @@ const router = createRouter({
                 {
                     path: '/agent',
                     name: 'agent',
-                    component: Agent,
+                    component: () => import('../components/agent/agent.vue'),
                     meta: {
                         current: 'agent'
                     }
@@ -103,7 +83,7 @@ const router = createRouter({
                     meta: {
                         current: 'agent'
                     },
-                    component: AgentEditor,
+                    component: () => import('../components/agent/agent-editor.vue'),
                 },
                 {
                     path: '/knowledge',
@@ -111,7 +91,7 @@ const router = createRouter({
                     meta: {
                         current: 'knowledge'
                     },
-                    component: Knowledge,
+                    component: () => import('../components/knowledge/knowledge.vue'),
                 },
                 {
                     path: '/knowledge/:knowledgeId/files',
@@ -119,12 +99,12 @@ const router = createRouter({
                     meta: {
                         current: 'knowledge'
                     },
-                    component: KnowledgeFile,
+                    component: () => import('../components/knowledge/knowledge-file.vue'),
                 },
                 {
                     path: '/tool',
                     name: 'tool',
-                    component: Tool,
+                    component: () => import('../components/tool/index.vue'),
                     meta: {
                         current: 'tool'
                     }
@@ -132,7 +112,7 @@ const router = createRouter({
                 {
                     path: '/model',
                     name: 'model',
-                    component: Model,
+                    component: () => import('../components/model/index.vue'),
                     meta: {
                         current: 'model'
                     }
@@ -143,7 +123,7 @@ const router = createRouter({
         {
             path: '/workspace',
             name: 'workspace',
-            component: Workspace,
+            component: () => import('../components/workspace/index.vue'),
             meta: {
                 current: 'workspace'
             },
@@ -151,12 +131,12 @@ const router = createRouter({
                 {
                     path: '',
                     name: 'workspaceDefaultPage',
-                    component: WorkspaceDefaultPage,
+                    component: () => import('../components/workspace/defaultPage.vue'),
                 },
                 {
                     path: 'workspacePage',
                     name: 'workspacePage',
-                    component: WorkspacePage,
+                    component: () => import('../components/workspace/workspacePage.vue'),
                 },
             ]
         },
@@ -167,7 +147,7 @@ const router = createRouter({
         {
             path: '/workspace/taskGraph',
             name: 'taskGraphPage',
-            component: TaskGraphPage,
+            component: () => import('../components/workspace/taskGraphPage.vue'),
             meta: {
                 requiresAuth: true
             }
@@ -175,12 +155,12 @@ const router = createRouter({
         {
             path: '/login',
             name: 'login',
-            component: Login,
+            component: () => import('../components/login/login.vue'),
         },
         {
             path: '/register',
             name: 'register',
-            component: Register,
+            component: () => import('../components/login/register.vue'),
         },
         // {
         //   path: '/about',

@@ -71,7 +71,7 @@ class ToolService(BaseService):
             tools = session.query(Tool).filter(Tool.tool_id.in_(tool_ids)).all()
             result = []
             if tools:
-                result.extend(tool.to_dict() for tool in tools)
+                result.extend([tool.to_dict() for tool in tools])
             return result
 
     def get_tool_list_all(self, user_id):
@@ -81,7 +81,7 @@ class ToolService(BaseService):
             sys_tools = session.query(Tool).filter(Tool.user_id.is_(None)).all()
             result = [tool.to_dict() for tool in sys_tools]
             if tools:
-                result.extend(tool.to_dict() for tool in tools)
+                result.extend([tool.to_dict() for tool in tools])
             return result
 
     def del_tool(self, tool_id):

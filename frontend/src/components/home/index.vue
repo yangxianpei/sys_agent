@@ -148,7 +148,7 @@ const handleLogout = async () => {
 const handleAvatarError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/public/user.svg'
+    target.src = '/user.svg'
   }
 }
 
@@ -185,7 +185,7 @@ watch(
             <div class="user-avatar-wrapper">
               <div class="user-avatar">
                 <img
-                  :src=" '/public/user.svg'"
+                  :src=" '/user.svg'"
                   alt="用户头像"
                   style="width: 40px; height: 40px; border-radius: 50%"
 

@@ -176,7 +176,7 @@ const handleLogout = async () => {
 const handleAvatarError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/public/user.svg'
+    target.src = '/user.svg'
   }
 }
 
@@ -241,7 +241,7 @@ onMounted(async () => {
       if (response.data.status_code === 200 && response.data.data) {
         const userData = response.data.data
         userStore.updateUserInfo({
-          avatar: userData.user_avatar || userData.avatar || '/public/user.svg',
+          avatar: userData.user_avatar || userData.avatar || '/user.svg',
           description: userData.user_description || userData.description
         })
       }
@@ -278,7 +278,7 @@ selectedSession<template>
             <div class="user-avatar-wrapper">
               <div class="user-avatar">
                 <img
-                  :src="userStore.userInfo?.avatar || '/public/user.svg'"
+                  :src="userStore.userInfo?.avatar || '/user.svg'"
                   alt="用户头像"
                   referrerpolicy="no-referrer"
                 />

@@ -48,7 +48,7 @@ const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
 const handleAvatarError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/public/user.svg'
+    target.src = '/user.svg'
   }
 }
 provide('clearMessage', async ()=>{
@@ -417,12 +417,12 @@ watch(
             <div class="message-content">
               <span>{{ msg.content }}</span>
             </div>
-            <img :src="userStore?.userInfo?.avatar || '/public/user.svg'" alt="User Avatar" class="avatar"  />
+            <img :src="userStore?.userInfo?.avatar || '/user.svg'" alt="User Avatar" class="avatar"  />
           </div>
           
           <!-- AI Message -->
           <div v-if="msg.role === 'assistant'" class="ai-message">
-            <img src="/src/assets/robot.svg" alt="AI Avatar" class="avatar" />
+            <img src="/robot.svg" alt="AI Avatar" class="avatar" />
             <div class="message-content">
               <!-- 加载转圈器 - 仅在内容为空且正在生成时显示 -->
               <div v-if="!msg.content && isGenerating && idx === messages.length - 1" class="loading-spinner-container">
