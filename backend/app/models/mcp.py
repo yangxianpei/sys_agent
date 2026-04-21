@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import JSON
 class Mcp(BaseModel):
     __tablename__ = "mcp_server"
     mcp_id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: uuid.uuid4().hex[:32]
+        String(32), primary_key=True, default=lambda: uuid.uuid4().hex[:32]
     )
     server_config: Mapped[str] = mapped_column(JSON, nullable=False)
 

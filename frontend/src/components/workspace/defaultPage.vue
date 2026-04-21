@@ -48,7 +48,7 @@ const messages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
 const handleAvatarError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/src/assets/user.svg'
+    target.src = '/public/user.svg'
   }
 }
 provide('clearMessage', async ()=>{
@@ -417,7 +417,7 @@ watch(
             <div class="message-content">
               <span>{{ msg.content }}</span>
             </div>
-            <img :src="userStore?.userInfo?.avatar || '/src/assets/user.svg'" alt="User Avatar" class="avatar"  />
+            <img :src="userStore?.userInfo?.avatar || '/public/'" alt="User Avatar" class="avatar"  />
           </div>
           
           <!-- AI Message -->

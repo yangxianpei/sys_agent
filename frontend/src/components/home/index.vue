@@ -185,7 +185,7 @@ watch(
             <div class="user-avatar-wrapper">
               <div class="user-avatar">
                 <img
-                  :src=" '/src/assets/user.svg'"
+                  :src=" '/public/user.svg'"
                   alt="用户头像"
                   style="width: 40px; height: 40px; border-radius: 50%"
 
