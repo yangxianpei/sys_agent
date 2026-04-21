@@ -34,9 +34,9 @@ class UserService(BaseService):
                     token = create_token({"username": username, "id": exit_username.id})
                     return True, "登录成功", {**exit_username.to_dict(), "token": token}
                 else:
-                    return False, "用户名不存在", None
+                    raise Exception("用户名不存在")
             except Exception as e:
-                self.logger("登录失败")
+                self.logger.error("登录失败: %s", e)
                 raise
 
 

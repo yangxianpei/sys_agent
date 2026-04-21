@@ -4,13 +4,12 @@ from app.models.base import BaseModel
 
 # 导入ORM映射相关的类型声明和字段映射函数
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Boolean, String, DateTime
+from sqlalchemy import Boolean, String, DateTime, JSON
 from typing import List
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
 from sqlalchemy.sql import func
 import uuid
-from sqlalchemy.dialects.postgresql import JSON
 
 
 class Tool(BaseModel):
@@ -18,7 +17,7 @@ class Tool(BaseModel):
     tool_id: Mapped[str] = mapped_column(
         String(32), primary_key=True, default=lambda: uuid.uuid4().hex[:32]
     )
-    auth_config: Mapped[str] = mapped_column(JSON, nullable=False)
+    auth_config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     description: Mapped[str] = mapped_column(String(128))
     openai_schema: Mapped[str] = mapped_column(JSON, nullable=False)
     logo: Mapped[str] = mapped_column(String(128), nullable=True)

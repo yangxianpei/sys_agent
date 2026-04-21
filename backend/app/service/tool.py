@@ -30,7 +30,7 @@ class ToolService(BaseService):
                     logo=logo,
                     type=2,
                     description=description,
-                    auth_config=auth_config,
+                    auth_config=auth_config or {},
                 )
                 self.logger.info("添加工具成功")
                 session.add(tool)
@@ -59,6 +59,7 @@ class ToolService(BaseService):
                     openai_schema=tool,
                     type=1,
                     description=title,
+                    auth_config={},
                 )
                 self.logger.info(f"添加{title}默认工具成功")
                 session.add(tool)
@@ -110,7 +111,7 @@ class ToolService(BaseService):
                 tool.description = description
                 tool_dict = tool.to_dict()
                 old_openai_schema = tool_dict.get("openai_schema", "")
-                tool.auth_config = auth_config
+                tool.auth_config = auth_config or {}
                 if not is_json_equal(old_openai_schema, openai_schema):
                     tool.openai_schema = openai_schema
                 old_logo = tool_dict.get("logo", "")

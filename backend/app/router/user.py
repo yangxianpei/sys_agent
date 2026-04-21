@@ -8,7 +8,7 @@ api_router = APIRouter(prefix="/v1", tags=["用户"])
 
 
 @api_router.get("/test")
-async def test(token=Depends(verify_token)):
+async def test():
     await mcp_servcie.connect_http_mcp()
     return {"message": "Hello World"}
 
