@@ -661,14 +661,6 @@ const uploadUrl = resolveApiUrl('/api/v1/knowledge_upload_doc')
             <span class="feature-icon">📝</span>
             <span class="feature-text">支持 Word、PDF</span>
           </div>
-          <div class="feature-item">
-            <span class="feature-icon">📊</span>
-            <span class="feature-text">支持 Excel、PPT</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-icon">🖼️</span>
-            <span class="feature-text">支持图片格式</span>
-          </div>
         </div>
         <el-upload
           v-model:file-list="fileList"
