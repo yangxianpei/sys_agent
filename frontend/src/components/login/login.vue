@@ -84,10 +84,13 @@ const handleLogin=(e:any)=>{
 }
 const login_handle= async ()=>{
   const d=await loginAPI(loginForm)
+  debugger
   if(d.code ==200){
     ElMessage.success('登录成功')
     userStore.setUserInfo(d.data)
     router.push('/')
+  }else{
+    ElMessage.error('登录失败')
   }
 
 }

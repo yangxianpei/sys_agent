@@ -47,7 +47,11 @@ class LLMService(BaseService):
 
     def get_llm_list(self, user_id):
         with self.session() as session:
-            llms = session.query(LLM).filter(LLM.user_id == user_id).all()
+            llms = (
+                session.query(LLM)
+                .filter(LLM.user_id == user_id | LLM.user_id.is_(None))
+                .all()
+            )
             result = []
             if llms:
                 result.extend(llm.to_dict() for llm in llms)
@@ -437,7 +441,7 @@ class LLMService(BaseService):
         logger.info("生产最终答案")
         # 最终总结阶段不再绑定 tools，避免继续产出 tool_call 导致 content 为空。
         async for chunk in llm.astream(messages):
-            chunk_content = chunk.content if isinstance(chunk.content, str) else ""
+            chunk_content = self._message_content_to_text(chunk.content)
             if chunk_content:
                 final_response += chunk_content
                 yield {"event": "task_result", "data": {"message": chunk_content}}
@@ -445,9 +449,7 @@ class LLMService(BaseService):
         # 兜底：若流式阶段没有文本，退回非流式调用，保证最终答案可返回。
         if not final_response.strip():
             fallback = await llm.ainvoke(input=messages)
-            fallback_content = (
-                fallback.content if isinstance(fallback.content, str) else str(fallback.content)
-            )
+            fallback_content = self._message_content_to_text(fallback.content)
             if fallback_content.strip():
                 yield {"event": "task_result", "data": {"message": fallback_content}}
 

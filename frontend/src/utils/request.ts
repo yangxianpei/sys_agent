@@ -44,12 +44,9 @@ request.interceptors.request.use(function (config) {
 
 // 添加响应拦截器：统一解析 { message, data, code }
 request.interceptors.response.use(function (response) {
+
     const payload = response.data
-    if (isApiEnvelope(payload) && !isBusinessSuccess(payload.code)) {
-        return Promise.reject(
-            new ApiError(payload.code, payload.message, payload.data)
-        )
-    }
+
     return response;
 }, function (error) {
     const body = error.response?.data
