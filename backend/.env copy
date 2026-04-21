@@ -30,10 +30,9 @@ LLM_API_KEY=sk-1cbbc25ad77a47c7aba4a487d964f48f
 # 服务地址
 LLM_BASE_URL=https://api.deepseek.com/v1
 
-# RERANK_MODEL_NAME= D:\test\model\ms-marco-MiniLM-L6-v2
-# all_MiniLM_L6= D:\test\model\all-MiniLM-L6-v2
-RERANK_MODEL_NAME=/app/llm/ms-marco-MiniLM-L6-v2
-all_MiniLM_L6= /app/llm/all-MiniLM-L6-v2
+RERANK_MODEL_NAME= D:\test\model\ms-marco-MiniLM-L6-v2
+all_MiniLM_L6= D:\test\model\all-MiniLM-L6-v2
+
 
 
 MILVUS=http://localhost:19530

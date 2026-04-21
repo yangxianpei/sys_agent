@@ -148,7 +148,7 @@ const handleLogout = async () => {
 const handleAvatarError = (event: Event) => {
   const target = event.target as HTMLImageElement
   if (target) {
-    target.src = '/src/assets/user.svg'
+    target.src = '/public/user.svg'
   }
 }
 
