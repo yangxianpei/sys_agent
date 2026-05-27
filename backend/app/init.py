@@ -106,10 +106,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def create_app():
     logger.info("初始化应用")
     init_db()
-    seed_db()
+    # seed_db()
     uvicorn.run(
         "app.init:app",
         host=Config.APP_HOST,
-        port=Config.APP_PORT,
-        reload=Config.APP_DEBUG,
-    )
+
